@@ -1,4 +1,4 @@
-import { camera, controls, markDirty } from './scene.js';
+import { camera, controls, markDirty, setBgTarget, BG_NEUTRAL, BG_ROUGE, BG_BLEU } from './scene.js';
 import {
   cellAt, cellIndex, GRID_SIZE,
   addGaletToCell, takeStack, topColor, stackSize,
@@ -6,7 +6,8 @@ import {
   buildGhostStack, removeBottomGhost, clearGhostStack,
   initBoard,
 } from './board.js';
-import { updateHUD, showEndMessage, menu, gameUI, uiViews, btnQuitter } from './ui.js';
+import { updateHUD, showEndMessage, showOnlineRoleBanner, hideOnlineRoleBanner, menu, gameUI, uiViews, btnQuitter } from './ui.js';
+import { onlineMode, myRole, emitMove, setIsMyTurn, emitLeave } from './network.js';
 
 // ---- État du jeu ----
 export let gameActive    = false;
@@ -62,6 +63,7 @@ export function demarrerPartie() {
 
   menu.style.display       = 'none';
   btnQuitter.style.display = 'block';
+  btnQuitter.textContent   = onlineMode ? '← Revenir au menu' : '← Quitter';
   gameUI.style.display     = 'flex';
   uiViews.style.display    = 'flex';
 
@@ -70,13 +72,18 @@ export function demarrerPartie() {
   camera.lookAt(0, 0, 0);
   controls.target.set(0, 0, 0);
   controls.update();
-  updateHUD(currentPlayer, phase, spreadStack, playerPebbles);
+  if (onlineMode) showOnlineRoleBanner(myRole);
+  setBgTarget(BG_ROUGE); // rouge commence toujours
+  updateHUD(currentPlayer, phase, spreadStack, playerPebbles, onlineMode ? myRole : null);
 }
 
 export function retourMenu() {
+  if (onlineMode) emitLeave();
   gameActive = false;
   clearHighlights();
   markDirty();
+  hideOnlineRoleBanner();
+  setBgTarget(BG_NEUTRAL);
 
   menu.style.display       = 'flex';
   btnQuitter.style.display = 'none';
@@ -99,7 +106,9 @@ export function onPhasePlace(cell) {
 
   buildGhostStack(spreadStack);
   highlightCells(getValidSpreadCells());
-  updateHUD(currentPlayer, phase, spreadStack, playerPebbles);
+  updateHUD(currentPlayer, phase, spreadStack, playerPebbles, onlineMode ? myRole : null);
+
+  if (onlineMode) emitMove('place', cell);
 }
 
 export function onPhaseSpread(cell) {
@@ -111,30 +120,46 @@ export function onPhaseSpread(cell) {
   spreadPrevCell = spreadLastCell;
   spreadLastCell = cell;
 
+  // Émettre immédiatement après la mise à jour du plateau, avant tout return anticipé
+  if (onlineMode) emitMove('spread', cell);
+
   if (spreadStack.length === 0) {
     // Égrainage terminé
     clearGhostStack();
     clearHighlights();
 
     if (checkWin(currentPlayer)) {
-      const name  = currentPlayer === 'rouge' ? 'Rouge' : 'Bleu';
       const color = currentPlayer === 'rouge' ? '#ff8888' : '#88aaff';
-      showEndMessage(`<span style="color:${color}">Joueur ${name} gagne !</span> — Nouvelle partie ?`, playerPebbles);
+      let msg;
+      if (onlineMode) {
+        msg = currentPlayer === myRole
+          ? `<span style="color:${color}">Vous avez gagné !</span>`
+          : `<span style="color:${color}">L'adversaire a gagné !</span>`;
+      } else {
+        const name = currentPlayer === 'rouge' ? 'Rouge' : 'Bleu';
+        msg = `<span style="color:${color}">Joueur ${name} gagne !</span> — Nouvelle partie ?`;
+      }
+      setBgTarget(BG_NEUTRAL);
+      showEndMessage(msg, playerPebbles);
       gameActive = false;
       return;
     }
     if (playerPebbles.rouge === 0 && playerPebbles.bleu === 0) {
-      showEndMessage('Égalité — Nouvelle partie ?', playerPebbles);
+      const suffix = onlineMode ? '' : ' — Nouvelle partie ?';
+      setBgTarget(BG_NEUTRAL);
+      showEndMessage(`Égalité${suffix}`, playerPebbles);
       gameActive = false;
       return;
     }
 
     currentPlayer = currentPlayer === 'rouge' ? 'bleu' : 'rouge';
     phase = 'place';
-    updateHUD(currentPlayer, phase, spreadStack, playerPebbles);
+    if (onlineMode) setIsMyTurn(currentPlayer === myRole);
+    setBgTarget(currentPlayer === 'rouge' ? BG_ROUGE : BG_BLEU);
+    updateHUD(currentPlayer, phase, spreadStack, playerPebbles, onlineMode ? myRole : null);
   } else {
     // Égrainage en cours, case suivante
     highlightCells(getValidSpreadCells());
-    updateHUD(currentPlayer, phase, spreadStack, playerPebbles);
+    updateHUD(currentPlayer, phase, spreadStack, playerPebbles, onlineMode ? myRole : null);
   }
 }

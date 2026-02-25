@@ -1,7 +1,9 @@
 import * as THREE from 'three';
-import { scene, camera, renderer, controls, clock, needsRender, markDirty, clearDirty } from './scene.js';
+import { scene, camera, renderer, controls, clock, needsRender, markDirty, clearDirty, updateBg } from './scene.js';
 import { cells, stackSize, GALET_H, hoverMarker, ghostGroup } from './board.js';
 import { gameActive, phase, getValidSpreadCells, onPhasePlace, onPhaseSpread, demarrerPartie, retourMenu } from './game.js';
+import { onlineMode, isMyTurn, creerPartie, rejoindrePartie, emitLeave } from './network.js';
+import { showMenuOnline, hideMenuOnline, hideLobby } from './ui.js';
 
 // ---- Raycaster / souris ----
 const raycaster = new THREE.Raycaster();
@@ -17,6 +19,7 @@ window.addEventListener('mousemove', e => {
 window.addEventListener('click', e => {
   if (!gameActive) return;
   if (e.target !== renderer.domElement) return;
+  if (onlineMode && !isMyTurn) return;   // bloquer pendant le tour de l'adversaire
   raycaster.setFromCamera(mouse, camera);
   const hits = raycaster.intersectObjects(cells);
   if (hits.length === 0) return;
@@ -25,9 +28,31 @@ window.addEventListener('click', e => {
   else                   onPhaseSpread(cell);
 });
 
-// ---- Boutons menu ----
+// ---- Boutons menu principal ----
 document.getElementById('btn-nouvelle-partie').addEventListener('click', demarrerPartie);
 document.getElementById('btn-quitter').addEventListener('click', retourMenu);
+document.getElementById('btn-en-ligne').addEventListener('click', showMenuOnline);
+
+// ---- Boutons sous-menu en ligne ----
+document.getElementById('btn-creer-partie').addEventListener('click', creerPartie);
+document.getElementById('btn-rejoindre').addEventListener('click', () => {
+  const code = document.getElementById('input-code').value;
+  rejoindrePartie(code);
+});
+document.getElementById('input-code').addEventListener('keydown', e => {
+  if (e.key === 'Enter') {
+    const code = document.getElementById('input-code').value;
+    rejoindrePartie(code);
+  }
+});
+document.getElementById('btn-retour-menu-online').addEventListener('click', hideMenuOnline);
+
+// ---- Bouton annuler lobby ----
+document.getElementById('btn-annuler-lobby').addEventListener('click', () => {
+  emitLeave();
+  hideLobby();
+  hideMenuOnline();
+});
 
 // ---- Resize ----
 window.addEventListener('resize', () => {
@@ -46,13 +71,17 @@ function animate() {
   const hovering = hoverMarker.visible || ghostGroup.visible;
   if (!needsRender && !hovering) return;
   clearDirty();
+  updateBg();
 
   if (gameActive) {
     raycaster.setFromCamera(mouse, camera);
     const hits = raycaster.intersectObjects(cells);
     const t    = clock.getElapsedTime();
 
-    if (hits.length > 0) {
+    // En mode en ligne, pas de hover pendant le tour de l'adversaire
+    const canInteract = !onlineMode || isMyTurn;
+
+    if (hits.length > 0 && canInteract) {
       const target = hits[0].object;
 
       if (phase === 'place' && stackSize(target) > 0) {

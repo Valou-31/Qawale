@@ -1,4 +1,15 @@
 services:
+  server:
+    build: .
+    command: node server.js
+    ports:
+      - "3001:3001"
+    volumes:
+      - .:/app
+      - /app/node_modules
+    environment:
+      - PORT=3001
+
   game:
     build: .
     ports:
@@ -8,3 +19,6 @@ services:
       - /app/node_modules
     environment:
       - NODE_ENV=development
+      - SOCKET_SERVER_URL=http://server:3001
+    depends_on:
+      - server

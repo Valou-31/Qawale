@@ -95,6 +95,34 @@
         font-weight: 600;
       }
 
+      /* Champ de saisie du code */
+      #input-code {
+        padding: 10px 14px;
+        border-radius: 8px;
+        border: 1px solid rgba(255, 255, 255, 0.25);
+        font-size: 1rem;
+        letter-spacing: 0.12em;
+        width: 180px;
+        background: rgba(255, 255, 255, 0.1);
+        color: #fff;
+        outline: none;
+        text-transform: uppercase;
+      }
+      #input-code::placeholder { color: rgba(255, 255, 255, 0.35); }
+
+      /* Écran lobby (attente d'adversaire) */
+      #lobby-view {
+        position: fixed;
+        inset: 0;
+        display: none;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 20px;
+        background: linear-gradient(160deg, #0f0f1e 0%, #1a1a3e 100%);
+        z-index: 10;
+      }
+
       /* Style boutons commun */
       .btn {
         padding: 12px 32px;
@@ -127,8 +155,35 @@
     <div id="menu">
       <h1>Qawale</h1>
       <button id="btn-nouvelle-partie" class="btn btn-primary">Nouvelle partie</button>
+      <button id="btn-en-ligne" class="btn btn-primary">En ligne</button>
       <a href="/rgl.pdf" target="_blank" class="btn btn-secondary">Règles</a>
     </div>
+
+    <!-- Sous-menu mode en ligne -->
+    <div id="menu-online" style="display:none; position:fixed; inset:0; flex-direction:column; align-items:center; justify-content:center; gap:20px; background:linear-gradient(160deg,#0f0f1e 0%,#1a1a3e 100%); z-index:10;">
+      <h2 style="color:#fff; font-size:1.8rem; letter-spacing:0.08em;">Mode en ligne</h2>
+      <button id="btn-creer-partie" class="btn btn-primary">Créer une partie</button>
+      <div style="display:flex; gap:8px; align-items:center;">
+        <input id="input-code" type="text" maxlength="6" placeholder="Code (ex : AB3K7X)" />
+        <button id="btn-rejoindre" class="btn btn-primary">Rejoindre</button>
+      </div>
+      <p id="lobby-error" style="color:#ff8888; font-size:0.9rem; min-height:1.2em;"></p>
+      <button id="btn-retour-menu-online" class="btn btn-secondary">← Retour</button>
+    </div>
+
+    <!-- Écran d'attente lobby -->
+    <div id="lobby-view">
+      <h2 style="color:#fff; font-size:1.8rem; letter-spacing:0.08em;">Partie en ligne</h2>
+      <p id="lobby-status" style="color:#aaa; font-size:1rem;"></p>
+      <div style="background:rgba(255,255,255,0.08); padding:18px 40px; border-radius:14px;">
+        <span id="lobby-code" style="color:#fff; font-size:2.4rem; letter-spacing:0.25em; font-weight:700;"></span>
+      </div>
+      <p style="color:#666; font-size:0.85rem;">Partagez ce code avec votre adversaire</p>
+      <button id="btn-annuler-lobby" class="btn btn-secondary">Annuler</button>
+    </div>
+
+    <!-- Bandeau de rôle (mode en ligne, visible en jeu) -->
+    <div id="online-role-banner" style="display:none; position:fixed; top:16px; left:50%; transform:translateX(-50%); background:rgba(0,0,0,0.65); color:#fff; padding:6px 20px; border-radius:20px; font-size:0.85rem; font-weight:600; backdrop-filter:blur(4px); z-index:10; letter-spacing:0.04em; white-space:nowrap;"></div>
 
     <!-- Bouton quitter (visible en jeu) -->
     <button id="btn-quitter" class="btn btn-secondary">← Quitter</button>

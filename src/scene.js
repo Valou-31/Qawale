@@ -3,7 +3,36 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
 // ---- Scène + rendu ----
 export const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x1a1a2e);
+
+// Couleurs de fond selon le joueur courant
+export const BG_NEUTRAL = 0x1a1a2e;
+export const BG_ROUGE   = 0x2e1515;  // variante rouge sombre
+export const BG_BLEU    = 0x15152e;  // variante bleue sombre
+
+const _bgCurrent = new THREE.Color(BG_NEUTRAL);
+const _bgTarget  = new THREE.Color(BG_NEUTRAL);
+let   _bgTransitioning = false;
+scene.background = _bgCurrent;
+
+export function setBgTarget(hexColor) {
+  _bgTarget.set(hexColor);
+  _bgTransitioning = true;
+  markDirty();
+}
+
+export function updateBg() {
+  if (!_bgTransitioning) return;
+  _bgCurrent.lerp(_bgTarget, 0.06);
+  const dist = Math.abs(_bgCurrent.r - _bgTarget.r)
+             + Math.abs(_bgCurrent.g - _bgTarget.g)
+             + Math.abs(_bgCurrent.b - _bgTarget.b);
+  if (dist < 0.002) {
+    _bgCurrent.copy(_bgTarget);
+    _bgTransitioning = false;
+  } else {
+    markDirty();
+  }
+}
 
 export const camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 1000);
 camera.position.set(0, 6, 5);
